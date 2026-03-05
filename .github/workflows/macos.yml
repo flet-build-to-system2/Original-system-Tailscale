@@ -1,0 +1,44 @@
+name: macOS Dev Machine (VNC & Tailscale)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  macos-session:
+    runs-on: macos-latest # سيقوم بتشغيل أحدث نسخة (غالباً macOS 14 أو 15)
+    timeout-minutes: 360
+
+    steps:
+      - name: Setup VNC Server (Screen Sharing)
+        run: |
+          # تفعيل مشاركة الشاشة في الماك
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -allowAccessFor -allUsers -privs -all
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -clientopts -setvncpasswd -vncpasswd "WinRDP@2026"
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -restart -agent -console
+          
+      - name: Install Flutter & Web Tools
+        run: |
+          # الماك يأتي مع Homebrew مثبت مسبقاً
+          brew install --cask google-chrome
+          brew install --cask visual-studio-code
+          brew install --cask flutter
+          brew install --cask android-studio
+
+      - name: Install and Connect Tailscale
+        run: |
+          curl -fsSL https://tailscale.com/install.sh | sh
+          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=macos-dev-machine
+          TS_IP=$(tailscale ip -4)
+          echo "TAILSCALE_IP=$TS_IP" >> $GITHUB_ENV
+
+      - name: Display Connection Details
+        run: |
+          echo "=============================================="
+          echo "   macOS MACHINE IS READY (VNC Protocol)"
+          echo "=============================================="
+          echo "IP Address : $TAILSCALE_IP"
+          echo "VNC Password: WinRDP@2026"
+          echo "User       : runner"
+          echo "=============================================="
+          # الحفاظ على الجلسة
+          sleep 6h
