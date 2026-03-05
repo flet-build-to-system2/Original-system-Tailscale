@@ -37,26 +37,23 @@ jobs:
           # إضافة مسار أداة Tailscale للـ PATH
           echo "/Applications/Tailscale.app/Contents/MacOS" >> $GITHUB_PATH
 
-      - name: Connect Tailscale
+      - name: Install Tailscale Standalone
         run: |
-          # تشغيل محرك Tailscale في الخلفية أولاً
-          sudo /Applications/Tailscale.app/Contents/MacOS/Tailscaleup --setup-desktop=false
+          # تحميل وفك ضغط Tailscale
+          curl -L https://pkgs.tailscale.com/stable/Tailscale-latest-macos.zip -o tailscale.zip
+          unzip -q tailscale.zip
+          sudo mv Tailscale.app /Applications
           
-          # تسجيل الدخول باستخدام التوكن مع تجاهل تحديثات الـ DNS التي قد تعطل الماك
-          sudo /Applications/Tailscale.app/Contents/MacOS/Tailscale login --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=macos-dev-machine
+      - name: Connect Tailscale (Fixed Path & Syntax)
+        run: |
+          # تشغيل الأمر مع المسافة الصحيحة واستخدام sudo
+          sudo /Applications/Tailscale.app/Contents/MacOS/Tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=macos-dev-machine --accept-dns=false --reset
           
-          # إجبار الاتصال على العمل
-          sudo /Applications/Tailscale.app/Contents/MacOS/Tailscale up --accept-dns=false --reset
-          
-          # الحصول على الـ IP مع محاولة التكرار في حال تأخر الظهور
-          for i in {1..10}; do
-            TS_IP=$(/Applications/Tailscale.app/Contents/MacOS/Tailscale ip -4)
-            if [ -n "$TS_IP" ]; then break; fi
-            echo "Waiting for IP..."
-            sleep 5
-          done
-          
+          # الانتظار للحصول على الـ IP
+          sleep 5
+          TS_IP=$(/Applications/Tailscale.app/Contents/MacOS/Tailscale ip -4)
           echo "TAILSCALE_IP=$TS_IP" >> $GITHUB_ENV
+          echo "Connected! IP is: $TS_IP"
           
       - name: Display Connection Details
         run: |
