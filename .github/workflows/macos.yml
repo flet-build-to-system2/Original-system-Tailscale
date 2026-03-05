@@ -42,11 +42,16 @@ jobs:
           # تحميل وفك ضغط Tailscale
           curl -L https://pkgs.tailscale.com/stable/Tailscale-latest-macos.zip -o tailscale.zip
           unzip -q tailscale.zip
+          
+          # حذف أي نسخة قديمة موجودة لتجنب خطأ "Directory not empty"
+          sudo rm -rf /Applications/Tailscale.app
+          
+          # نقل النسخة الجديدة
           sudo mv Tailscale.app /Applications
           
-      - name: Connect Tailscale (Fixed Path & Syntax)
+      - name: Connect Tailscale (Final Fix)
         run: |
-          # تشغيل الأمر مع المسافة الصحيحة واستخدام sudo
+          # تشغيل المحرك والاتصال
           sudo /Applications/Tailscale.app/Contents/MacOS/Tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=macos-dev-machine --accept-dns=false --reset
           
           # الانتظار للحصول على الـ IP
