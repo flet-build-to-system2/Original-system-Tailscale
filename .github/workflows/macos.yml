@@ -1,34 +1,47 @@
-name: macOS Dev Machine (VNC & Tailscale)
+name: macOS Dev Machine (VNC & Fixed Tailscale)
 
 on:
   workflow_dispatch:
 
 jobs:
   macos-session:
-    runs-on: macos-latest # سيقوم بتشغيل أحدث نسخة (غالباً macOS 14 أو 15)
+    runs-on: macos-latest
     timeout-minutes: 360
 
     steps:
       - name: Setup VNC Server (Screen Sharing)
         run: |
-          # تفعيل مشاركة الشاشة في الماك
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -allowAccessFor -allUsers -privs -all
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -clientopts -setvncpasswd -vncpasswd "WinRDP@2026"
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -restart -agent -console
           
-      - name: Install Flutter & Web Tools
+      - name: Install Dev Tools (Chrome & VS Code)
         run: |
-          # الماك يأتي مع Homebrew مثبت مسبقاً
-          brew install --cask google-chrome
-          brew install --cask visual-studio-code
-          brew install --cask flutter
-          brew install --cask android-studio
+          brew install --cask google-chrome visual-studio-code android-studio
 
-      - name: Install and Connect Tailscale
+      - name: Install Flutter Manually (To avoid SHA Mismatch)
         run: |
-          curl -fsSL https://tailscale.com/install.sh | sh
-          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=macos-dev-machine
-          TS_IP=$(tailscale ip -4)
+          cd $HOME
+          curl -O https://storage.googleapis.com/flutter_infra_release/releases/stable/macos/flutter_macos_arm64_3.29.0-stable.zip
+          unzip -q flutter_macos_arm64_3.29.0-stable.zip
+          echo "$HOME/flutter/bin" >> $GITHUB_PATH
+          echo "$HOME/flutter/bin/cache/dart-sdk/bin" >> $GITHUB_PATH
+          
+      - name: Install Tailscale (Fixed Method)
+        run: |
+          # تحميل نسخة الـ Binary مباشرة لتجنب فتح الـ App Store
+          curl -L https://pkgs.tailscale.com/stable/Tailscale-latest-macos.zip -o tailscale.zip
+          unzip -q tailscale.zip
+          # تحريك التطبيق لمجلد التطبيقات
+          sudo mv Tailscale.app /Applications
+          # إضافة مسار أداة Tailscale للـ PATH
+          echo "/Applications/Tailscale.app/Contents/MacOS" >> $GITHUB_PATH
+
+      - name: Connect Tailscale
+        run: |
+          # البدء بالاتصال باستخدام المسار المباشر للأداة
+          /Applications/Tailscale.app/Contents/MacOS/Tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=macos-dev-machine
+          TS_IP=$(/Applications/Tailscale.app/Contents/MacOS/Tailscale ip -4)
           echo "TAILSCALE_IP=$TS_IP" >> $GITHUB_ENV
 
       - name: Display Connection Details
@@ -40,5 +53,4 @@ jobs:
           echo "VNC Password: WinRDP@2026"
           echo "User       : runner"
           echo "=============================================="
-          # الحفاظ على الجلسة
           sleep 6h
