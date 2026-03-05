@@ -39,11 +39,25 @@ jobs:
 
       - name: Connect Tailscale
         run: |
-          # البدء بالاتصال باستخدام المسار المباشر للأداة
-          /Applications/Tailscale.app/Contents/MacOS/Tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=macos-dev-machine
-          TS_IP=$(/Applications/Tailscale.app/Contents/MacOS/Tailscale ip -4)
+          # تشغيل محرك Tailscale في الخلفية أولاً
+          sudo /Applications/Tailscale.app/Contents/MacOS/Tailscaleup --setup-desktop=false
+          
+          # تسجيل الدخول باستخدام التوكن مع تجاهل تحديثات الـ DNS التي قد تعطل الماك
+          sudo /Applications/Tailscale.app/Contents/MacOS/Tailscale login --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=macos-dev-machine
+          
+          # إجبار الاتصال على العمل
+          sudo /Applications/Tailscale.app/Contents/MacOS/Tailscale up --accept-dns=false --reset
+          
+          # الحصول على الـ IP مع محاولة التكرار في حال تأخر الظهور
+          for i in {1..10}; do
+            TS_IP=$(/Applications/Tailscale.app/Contents/MacOS/Tailscale ip -4)
+            if [ -n "$TS_IP" ]; then break; fi
+            echo "Waiting for IP..."
+            sleep 5
+          done
+          
           echo "TAILSCALE_IP=$TS_IP" >> $GITHUB_ENV
-
+          
       - name: Display Connection Details
         run: |
           echo "=============================================="
