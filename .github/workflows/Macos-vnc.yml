@@ -1,0 +1,54 @@
+name: macOS GUI via SSH Tunnel (Free & No Card)
+
+on: 
+  workflow_dispatch: # تشغيل يدوي من تبويب Actions
+
+jobs:
+  macos-gui:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Tools and Setup VNC
+        run: |
+          # 1. تثبيت tmate لعمل النفق
+          brew install tmate
+
+          # 2. إعداد كلمة مرور الـ VNC (كلمة السر هي password123)
+          # نستخدم kickstart لتفعيل مشاركة الشاشة دون الحاجة لتغيير كلمة مرور المستخدم
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -activate -configure -access -on \
+            -client_opts -setvncpasswd -vncpasswd "password123" \
+            -restart -agent -privs -all
+          
+          # السماح بالوصول لجميع المستخدمين لتجنب مشاكل الصلاحيات
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -configure -allowAccessFor -allUsers -privs -all
+
+      - name: Launch tmate Tunnel
+        run: |
+          # 3. تشغيل tmate في الخلفية
+          tmate -S /tmp/tmate.sock new-session -d
+          tmate -S /tmp/tmate.sock wait tmate-ready
+          
+          # 4. استخراج رابط الـ SSH
+          SSH_CMD=$(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')
+          
+          echo "=========================================================="
+          echo "🚀 تم تشغيل النظام بنجاح!"
+          echo ""
+          echo "خطوات الاتصال من جهازك الشخصي:"
+          echo "1. افتح Terminal في جهازك (ماك، لينكس، أو ويندوز)."
+          echo "2. انسخ الأمر التالي وأضف إليه خيار الـ Port Forwarding:"
+          echo "   ssh -L 5900:localhost:5900 ${SSH_CMD#ssh }"
+          echo ""
+          echo "3. بعد تشغيل الأمر، افتح برنامج VNC Viewer واكتب العنوان:"
+          echo "   localhost:5900"
+          echo ""
+          echo "4. كلمة المرور هي: password123"
+          echo "=========================================================="
+
+          # إبقاء السيرفر يعمل لمدة 6 ساعات
+          sleep 21600
+          
