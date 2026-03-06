@@ -1,0 +1,37 @@
+name: Windows Original GUI via Tailscale
+
+on: 
+  workflow_dispatch:
+
+jobs:
+  windows-gui:
+    runs-on: windows-latest
+    steps:
+      - name: Install Tailscale
+        shell: powershell
+        run: |
+          # تحميل وتثبيت Tailscale للويندوز
+          curl.exe -Lo tailscale-setup.exe https://pkgs.tailscale.com/stable/tailscale-setup-exe
+          Start-Process .\tailscale-setup.exe -ArgumentList "/S" -Wait
+          
+          # تشغيل وربط الحساب
+          & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=github-windows
+
+      - name: Enable Remote Desktop (RDP)
+        shell: powershell
+        run: |
+          # تفعيل سطح المكتب البعيد وتجاوز جدار الحماية
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          
+          # إعداد كلمة مرور للمستخدم الحالي (runneradmin)
+          $Password = ConvertTo-SecureString "Password123!" -AsPlainText -Force
+          Set-LocalUser -Name "runneradmin" -Password $Password
+
+      - name: Keep Alive
+        shell: powershell
+        run: |
+          Write-Host "Windows is ready!"
+          & "C:\Program Files\Tailscale\tailscale.exe" ip -4
+          # إبقاء السيرفر يعمل لمدة 6 ساعات
+          Start-Sleep -Seconds 21600
