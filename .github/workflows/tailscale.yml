@@ -7,17 +7,21 @@ jobs:
   macos-gui:
     runs-on: macos-latest
     steps:
-      - name: Setup Tailscale (Fixed)
+      - name: Setup Tailscale (Fixed Paths for ARM)
         run: |
-          # تثبيت Tailscale باستخدام brew لضمان عمل الأوامر في Terminal
+          # 1. تثبيت Tailscale
           brew install tailscale
           
-          # تشغيل خدمة tailscaled في الخلفية
-          sudo /usr/local/sbin/tailscaled --tun=userspace-networking &
+          # 2. تشغيل خدمة tailscaled من المسار الصحيح (ARM path) في الخلفية
+          # نستخدم المسار الكامل لضمان الوصول للملف
+          sudo /opt/homebrew/bin/tailscaled --tun=userspace-networking &
+          
+          # الانتظار حتى تبدأ الخدمة
           sleep 5
           
-          # تسجيل الدخول باستخدام الـ Auth Key الخاص بك
-          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=github-mac
+          # 3. تسجيل الدخول باستخدام المفتاح الخاص بك
+          sudo /opt/homebrew/bin/tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=github-mac
+          
       - name: Setup VNC
         run: |
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
