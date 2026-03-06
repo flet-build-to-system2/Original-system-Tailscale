@@ -49,16 +49,21 @@ jobs:
           # نقل النسخة الجديدة
           sudo mv Tailscale.app /Applications
           
-      - name: Connect Tailscale (Final Fix)
+      - name: Connect Tailscale (Force Start)
         run: |
-          # تشغيل المحرك والاتصال
-          sudo /Applications/Tailscale.app/Contents/MacOS/Tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=macos-dev-machine --accept-dns=false --reset
-          
-          # الانتظار للحصول على الـ IP
+          # 1. تشغيل المحرك في الخلفية (Daemon)
+          sudo /Applications/Tailscale.app/Contents/MacOS/Tailscale --socket /tmp/tailscaled.sock daemon > /dev/null 2>&1 &
           sleep 5
-          TS_IP=$(/Applications/Tailscale.app/Contents/MacOS/Tailscale ip -4)
+          
+          # 2. تشغيل الاتصال مع تحديد السوكيت
+          sudo /Applications/Tailscale.app/Contents/MacOS/Tailscale --socket /tmp/tailscaled.sock up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=macos-dev-machine --accept-dns=false --reset
+          
+          # 3. الحصول على الـ IP
+          sleep 5
+          TS_IP=$(/Applications/Tailscale.app/Contents/MacOS/Tailscale --socket /tmp/tailscaled.sock ip -4)
           echo "TAILSCALE_IP=$TS_IP" >> $GITHUB_ENV
           echo "Connected! IP is: $TS_IP"
+          
           
       - name: Display Connection Details
         run: |
