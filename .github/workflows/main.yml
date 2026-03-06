@@ -1,0 +1,44 @@
+name: Windows with VirtualBox Setup
+
+on: 
+  workflow_dispatch:
+
+jobs:
+  virtualbox-setup:
+    runs-on: windows-latest
+    steps:
+      - name: Install Tailscale & VirtualBox
+        shell: powershell
+        run: |
+          # 1. تثبيت Tailscale للاتصال
+          choco install tailscale -y
+          Start-Sleep -Seconds 5
+          & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=github-vbox
+
+          # 2. تثبيت VirtualBox
+          Write-Host "Installing VirtualBox..."
+          choco install virtualbox -y
+
+      - name: Download macOS ISO (Placeholder)
+        shell: powershell
+        run: |
+          # ملاحظة: روابط ISO الماك رسمية غير متوفرة مباشرة، سنستخدم رابطاً تجريبياً أو يمكنك وضع رابطك الخاص
+          Write-Host "Downloading macOS ISO..."
+          # استبدل الرابط أدناه برابط مباشر لملف ISO الخاص بك إذا كان لديك واحد
+          # Invoke-WebRequest -Uri "YOUR_ISO_URL" -OutFile "macos.iso"
+          echo "بسبب حجم ملفات ISO (أكثر من 8 جيجا)، يفضل تحميلها داخل الويندوز بعد الاتصال به"
+
+      - name: Configure RDP & Password
+        shell: powershell
+        run: |
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          $Password = ConvertTo-SecureString "Password123!" -AsPlainText -Force
+          Set-LocalUser -Name "runneradmin" -Password $Password
+
+      - name: Keep Alive
+        shell: powershell
+        run: |
+          Write-Host "Windows is ready! Connect via RDP to manage VirtualBox."
+          & "C:\Program Files\Tailscale\tailscale.exe" ip -4
+          Start-Sleep -Seconds 21600
