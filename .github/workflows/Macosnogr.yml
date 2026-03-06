@@ -1,0 +1,46 @@
+name: macOS GUI via VNC
+
+on: 
+  workflow_dispatch: # تشغيل يدوي فقط
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Ngrok and Setup VNC
+        run: |
+          # تثبيت Ngrok باستخدام Homebrew
+          brew install --cask ngrok
+          
+          # إعداد كلمة مرور للمستخدم الحالي (runner) لتمكين الـ VNC
+          sudo dscl . -passwd /Users/runner "password123"
+          
+          # تفعيل مشاركة الشاشة (VNC) في macOS
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -activate -configure -access -on \
+            -client_opts -setvncpasswd -vncpasswd "password123" \
+            -restart -agent -privs -all
+
+      - name: Start Ngrok Tunnel
+        env:
+          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+        run: |
+          # توثيق Ngrok
+          ngrok config add-authtoken $NGROK_AUTH_TOKEN
+          
+          # تشغيل النفق على منفذ VNC الافتراضي (5900) في الخلفية
+          ngrok tcp 5900 --region us & 
+          
+          # انتظر قليلاً ليتصل النفق ثم استخرج الرابط
+          sleep 10
+          curl --silent http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url'
+
+      - name: Keep Alive
+        run: |
+          echo "الجلسة تعمل الآن. استخدم عنوان Ngrok الظاهر أعلاه للاتصال عبر VNC."
+          echo "كلمة المرور هي: password123"
+          # إبقاء الجلسة تعمل لمدة 6 ساعات (أقصى حد لـ GitHub Actions)
+          sleep 21600
