@@ -10,19 +10,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Ngrok and Setup VNC
+      - name: Setup VNC without Password Change
         run: |
-          # تثبيت Ngrok باستخدام Homebrew
+          # تثبيت Ngrok
           brew install --cask ngrok
           
-          # إعداد كلمة مرور للمستخدم الحالي (runner) لتمكين الـ VNC
-          sudo dscl . -passwd /Users/runner "password123"
+          # إنشاء مجلد الإعدادات إذا لم يكن موجوداً
+          mkdir -p ~/.vnc
           
-          # تفعيل مشاركة الشاشة (VNC) في macOS
+          # إعداد كلمة مرور الـ VNC مباشرة (بشكل مشفر)
+          # ملاحظة: كلمة المرور هنا هي 'password123'
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
             -activate -configure -access -on \
             -client_opts -setvncpasswd -vncpasswd "password123" \
             -restart -agent -privs -all
+            
+          # السماح لجميع المستخدمين بالوصول (لتجنب مشاكل الصلاحيات)
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -configure -allowAccessFor -allUsers -privs -all
+            
 
       - name: Start Ngrok Tunnel
         env:
