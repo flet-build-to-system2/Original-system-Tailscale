@@ -1,4 +1,4 @@
-name: macOS Sequoia GUI via Tailscale
+name: macOS GUI Final Fix
 
 on: 
   workflow_dispatch:
@@ -7,29 +7,27 @@ jobs:
   macos-gui:
     runs-on: macos-latest
     steps:
-      - name: Install Tailscale
+      - name: Install Tailscale & Tools
         run: |
           brew install tailscale
           sudo /opt/homebrew/bin/tailscaled --tun=userspace-networking &
           sleep 5
           sudo /opt/homebrew/bin/tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=github-mac
 
-      - name: Enable Screen Sharing & Virtual Display
+      - name: Force Enable GUI & VNC
         run: |
-          # إعداد كلمة مرور الـ VNC
+          # تفعيل خدمة مشاركة الشاشة بأقصى صلاحيات
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
             -activate -configure -access -on \
             -client_opts -setvncpasswd -vncpasswd "password123" \
             -restart -agent -privs -all
           
-          # السماح بالاتصال من أي مستخدم وتجاوز جدار الحماية
-          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
-            -configure -allowAccessFor -allUsers -privs -all
+          # فتح المنفذ في جدار حماية macOS (مهم جداً)
+          sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent
+          sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate off
 
-      - name: Keep Alive & Log Info
+      - name: Keep Alive
         run: |
-          echo "الـ IP الخاص بك هو:"
+          echo "جرب الاتصال الآن عبر VNC"
           /opt/homebrew/bin/tailscale ip -4
-          echo "كلمة المرور: password123"
-          # إبقاء النظام يعمل
           sleep 21600
