@@ -1,4 +1,4 @@
-name: Windows with VirtualBox and macOS ISO
+name: Windows Ready for Manual Download
 
 on: 
   workflow_dispatch:
@@ -7,28 +7,12 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - name: Install Tailscale
+      - name: Install Tailscale & VirtualBox
         shell: powershell
         run: |
-          choco install tailscale -y
+          choco install tailscale virtualbox -y
           Start-Sleep -Seconds 5
           & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=github-vbox
-
-      - name: Install VirtualBox
-        shell: powershell
-        run: |
-          choco install virtualbox -y
-
-      - name: Download macOS ISO
-        shell: powershell
-        run: |
-          Write-Host "جاري تحميل ملف الـ ISO... قد يستغرق هذا وقتاً"
-          # سنقوم بإنشاء مجلد خاص للملفات
-          mkdir C:\macOS-Files
-          # هذا رابط كمثال لنسخة macOS (يفضل التأكد من صلاحية الروابط الخارجية دائماً)
-          $url = "https://archive.org/download/macos-collection/macOS%20Catalina%2010.15.7.iso"
-          Invoke-WebRequest -Uri $url -OutFile "C:\macOS-Files\macOS_Catalina.iso"
-          Write-Host "اكتمل التحميل في المسار C:\macOS-Files"
 
       - name: Setup RDP Access
         shell: powershell
@@ -41,6 +25,6 @@ jobs:
       - name: Keep Alive
         shell: powershell
         run: |
-          Write-Host "الويندوز جاهز! اتصل الآن ستجد VirtualBox والـ ISO بانتظارك"
+          Write-Host "Connect now and download the ISO inside the machine!"
           & "C:\Program Files\Tailscale\tailscale.exe" ip -4
           Start-Sleep -Seconds 21600
