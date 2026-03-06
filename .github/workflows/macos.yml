@@ -1,77 +1,35 @@
-name: macOS Dev Machine (VNC & Fixed Tailscale)
+name: macOS Sequoia GUI via Tailscale
 
-on:
+on: 
   workflow_dispatch:
 
 jobs:
-  macos-session:
+  macos-gui:
     runs-on: macos-latest
-    timeout-minutes: 360
-
     steps:
-      - name: Setup VNC Server (Screen Sharing)
+      - name: Install Tailscale
         run: |
-          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -allowAccessFor -allUsers -privs -all
-          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -clientopts -setvncpasswd -vncpasswd "WinRDP@2026"
-          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -restart -agent -console
-          
-      - name: Install Dev Tools (Chrome & VS Code)
-        run: |
-          brew install --cask google-chrome visual-studio-code android-studio
-
-      - name: Install Flutter Manually (To avoid SHA Mismatch)
-        run: |
-          cd $HOME
-          curl -O https://storage.googleapis.com/flutter_infra_release/releases/stable/macos/flutter_macos_arm64_3.29.0-stable.zip
-          unzip -q flutter_macos_arm64_3.29.0-stable.zip
-          echo "$HOME/flutter/bin" >> $GITHUB_PATH
-          echo "$HOME/flutter/bin/cache/dart-sdk/bin" >> $GITHUB_PATH
-          
-      - name: Install Tailscale (Fixed Method)
-        run: |
-          # تحميل نسخة الـ Binary مباشرة لتجنب فتح الـ App Store
-          curl -L https://pkgs.tailscale.com/stable/Tailscale-latest-macos.zip -o tailscale.zip
-          unzip -q tailscale.zip
-          # تحريك التطبيق لمجلد التطبيقات
-          sudo mv Tailscale.app /Applications
-          # إضافة مسار أداة Tailscale للـ PATH
-          echo "/Applications/Tailscale.app/Contents/MacOS" >> $GITHUB_PATH
-
-      - name: Install Tailscale Standalone
-        run: |
-          # تحميل وفك ضغط Tailscale
-          curl -L https://pkgs.tailscale.com/stable/Tailscale-latest-macos.zip -o tailscale.zip
-          unzip -q tailscale.zip
-          
-          # حذف أي نسخة قديمة موجودة لتجنب خطأ "Directory not empty"
-          sudo rm -rf /Applications/Tailscale.app
-          
-          # نقل النسخة الجديدة
-          sudo mv Tailscale.app /Applications
-          
-      - name: Connect Tailscale (Force Start)
-        run: |
-          # 1. تشغيل المحرك في الخلفية (Daemon)
-          sudo /Applications/Tailscale.app/Contents/MacOS/Tailscale --socket /tmp/tailscaled.sock daemon > /dev/null 2>&1 &
+          brew install tailscale
+          sudo /opt/homebrew/bin/tailscaled --tun=userspace-networking &
           sleep 5
-          
-          # 2. تشغيل الاتصال مع تحديد السوكيت
-          sudo /Applications/Tailscale.app/Contents/MacOS/Tailscale --socket /tmp/tailscaled.sock up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=macos-dev-machine --accept-dns=false --reset
-          
-          # 3. الحصول على الـ IP
-          sleep 5
-          TS_IP=$(/Applications/Tailscale.app/Contents/MacOS/Tailscale --socket /tmp/tailscaled.sock ip -4)
-          echo "TAILSCALE_IP=$TS_IP" >> $GITHUB_ENV
-          echo "Connected! IP is: $TS_IP"
-          
-          
-      - name: Display Connection Details
+          sudo /opt/homebrew/bin/tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=github-mac
+
+      - name: Enable Screen Sharing & Virtual Display
         run: |
-          echo "=============================================="
-          echo "   macOS MACHINE IS READY (VNC Protocol)"
-          echo "=============================================="
-          echo "IP Address : $TAILSCALE_IP"
-          echo "VNC Password: WinRDP@2026"
-          echo "User       : runner"
-          echo "=============================================="
-          sleep 6h
+          # إعداد كلمة مرور الـ VNC
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -activate -configure -access -on \
+            -client_opts -setvncpasswd -vncpasswd "password123" \
+            -restart -agent -privs -all
+          
+          # السماح بالاتصال من أي مستخدم وتجاوز جدار الحماية
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -configure -allowAccessFor -allUsers -privs -all
+
+      - name: Keep Alive & Log Info
+        run: |
+          echo "الـ IP الخاص بك هو:"
+          /opt/homebrew/bin/tailscale ip -4
+          echo "كلمة المرور: password123"
+          # إبقاء النظام يعمل
+          sleep 21600
