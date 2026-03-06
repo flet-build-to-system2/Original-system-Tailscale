@@ -7,13 +7,17 @@ jobs:
   macos-gui:
     runs-on: macos-latest
     steps:
-      - name: Setup Tailscale
+      - name: Setup Tailscale (Fixed)
         run: |
-          curl -fsSL https://tailscale.com/install.sh | sh
-          sudo tailscaled --tun=userspace-networking &
+          # تثبيت Tailscale باستخدام brew لضمان عمل الأوامر في Terminal
+          brew install tailscale
+          
+          # تشغيل خدمة tailscaled في الخلفية
+          sudo /usr/local/sbin/tailscaled --tun=userspace-networking &
           sleep 5
+          
+          # تسجيل الدخول باستخدام الـ Auth Key الخاص بك
           sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=github-mac
-
       - name: Setup VNC
         run: |
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
