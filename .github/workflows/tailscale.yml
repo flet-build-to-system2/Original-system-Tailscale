@@ -1,0 +1,29 @@
+name: macOS GUI via Tailscale
+
+on: 
+  workflow_dispatch:
+
+jobs:
+  macos-gui:
+    runs-on: macos-latest
+    steps:
+      - name: Setup Tailscale
+        run: |
+          curl -fsSL https://tailscale.com/install.sh | sh
+          sudo tailscaled --tun=userspace-networking &
+          sleep 5
+          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=github-mac
+
+      - name: Setup VNC
+        run: |
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -activate -configure -access -on \
+            -client_opts -setvncpasswd -vncpasswd "password123" \
+            -restart -agent -privs -all
+
+      - name: Keep Alive
+        run: |
+          echo "جهاز الماك الآن متصل بشبكة Tailscale الخاصة بك!"
+          echo "اسمه في التطبيق هو: github-mac"
+          echo "كلمة مرور الـ VNC هي: password123"
+          sleep 21600
