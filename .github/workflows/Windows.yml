@@ -7,26 +7,18 @@ jobs:
   windows-gui:
     runs-on: windows-latest
     steps:
-      - name: Install Tailscale (Fixed)
+      - name: Install Tailscale via Chocolatey
         shell: powershell
         run: |
-          # تحميل النسخة المستقرة من Tailscale لويندوز x64
-          $url = "https://pkgs.tailscale.com/stable/tailscale-setup-full-latest.exe"
-          Write-Host "Downloading Tailscale from $url..."
-          Invoke-WebRequest -Uri $url -OutFile "tailscale-setup.exe"
+          # تثبيت Tailscale باستخدام مدير الحزم المدمج في ويندوز جيت هاب
+          choco install tailscale -y
           
-          # التحقق من أن الملف تم تحميله بنجاح وحجمه منطقي
-          if ((Get-Item "tailscale-setup.exe").Length -lt 1MB) {
-              Write-Error "Download failed or file is too small!"
-              exit 1
-          }
-
-          Write-Host "Installing Tailscale..."
-          Start-Process .\tailscale-setup.exe -ArgumentList "/S" -Wait
+          # الانتظار قليلاً للتأكد من تسجيل المسارات في النظام
+          Start-Sleep -Seconds 5
           
-          Write-Host "Connecting to Tailscale..."
+          # تشغيل وربط الحساب (نستخدم المسار الافتراضي لـ choco)
           & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=github-windows
-
+          
       - name: Enable Remote Desktop (RDP)
         shell: powershell
         run: |
