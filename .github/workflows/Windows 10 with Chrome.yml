@@ -5,7 +5,7 @@ on:
 
 jobs:
   rdp-session:
-    runs-on: windows-2022 # هذا هو الخيار الأقرب لويندوز 10
+    runs-on: windows-latest # هذا هو الخيار الأقرب لويندوز 10
     timeout-minutes: 360
 
     steps:
