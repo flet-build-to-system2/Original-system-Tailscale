@@ -1,0 +1,94 @@
+name: Pure RDP Windows 10 with Chrome
+
+on:
+  workflow_dispatch:
+
+jobs:
+  rdp-session:
+    runs-on: windows-2022 # هذا هو الخيار الأقرب لويندوز 10
+    timeout-minutes: 360
+
+    steps:
+      - name: Configure RDP Service & User
+        shell: powershell
+        run: |
+          # تفعيل الـ RDP
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0 -Force
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          
+          # إعداد كلمة المرور (أقل من 14 حرف لتجنب التحذيرات)
+          $runnerAdminPass = "WinRDP@2026"
+          
+          # تغيير كلمة مرور المستخدم الحالي بدلاً من إنشاء واحد جديد
+          $admin = [adsi]"WinNT://./runneradmin,user"
+          $admin.SetPassword($runnerAdminPass)
+          
+          # تخزين البيانات في البيئة
+          echo "RDP_USER=runneradmin" >> $env:GITHUB_ENV
+          echo "RDP_PASS=$runnerAdminPass" >> $env:GITHUB_ENV
+          Write-Host "User configured successfully."
+          
+      - name: Install Development Tools
+        shell: powershell
+        run: |
+          # 1. تثبيت مدير الحزم Chocolatey
+          Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+          
+          # 2. تثبيت البرامج الأساسية (Chrome & VS Code)
+          Write-Host "Installing Chrome and VS Code..."
+          choco install googlechrome vscode -y
+          
+          # 3. تثبيت Flutter و Android Studio
+          Write-Host "Installing Flutter and Android Studio (This may take time)..."
+          choco install flutter androidstudio -y
+          
+          # 4. إضافة Flutter إلى مسار النظام (PATH) ليعمل مباشرة في الـ Terminal
+          $flutterPath = "C:\tools\flutter\bin"
+          [Environment]::SetEnvironmentVariable("Path", $env:Path + ";" + $flutterPath, [EnvironmentVariableTarget]::Machine)
+          
+          Write-Host "All tools installed successfully!"
+      - name: Install Antigravity
+        shell: powershell
+        run: |
+          Write-Host "Downloading Antigravity..."
+
+          $url = "https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.20.6-5891862175809536/windows-x64/Antigravity.exe"
+          $output = "$env:USERPROFILE\Desktop\Antigravity.exe"
+
+          Invoke-WebRequest -Uri $url -OutFile $output
+
+          Write-Host "Download completed."
+
+          # محاولة تشغيله (إذا كان installer صامت)
+          Start-Process -FilePath $output -ArgumentList "/S" -Wait -ErrorAction SilentlyContinue
+
+          Write-Host "Antigravity installed or launched."
+
+      - name: Install and Connect Tailscale
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe" -OutFile "tailscale-setup.exe"
+          Start-Process -FilePath ".\tailscale-setup.exe" -ArgumentList "/S" -Wait
+          & "$env:ProgramFiles\Tailscale\tailscale.exe" up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=github-runner-$env:GITHUB_RUN_ID
+          $tsIP = $null
+          for ($i=1; $i -le 15; $i++){ 
+            $tsIP = & "$env:ProgramFiles\Tailscale\tailscale.exe" ip -4
+            if($tsIP){break}
+            Start-Sleep 4 
+          }
+          if (-not $tsIP) { exit 1 }
+          echo "TAILSCALE_IP=$tsIP" >> $env:GITHUB_ENV
+
+      - name: Display Connection Details and Keep Alive
+        shell: powershell
+        run: |
+          Write-Host "=============================================="
+          Write-Host "   WINDOWS 10 RDP IS READY (via Tailscale)   "
+          Write-Host "=============================================="
+          Write-Host "IP Address: $env:TAILSCALE_IP"
+          Write-Host "Username  : $env:RDP_USER"
+          Write-Host "Password  : $env:RDP_PASS"
+          Write-Host "=============================================="
+          while ($true) {
+            Start-Sleep 300
+          }
