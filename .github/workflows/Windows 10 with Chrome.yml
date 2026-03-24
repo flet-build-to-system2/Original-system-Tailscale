@@ -47,22 +47,6 @@ jobs:
           [Environment]::SetEnvironmentVariable("Path", $env:Path + ";" + $flutterPath, [EnvironmentVariableTarget]::Machine)
           
           Write-Host "All tools installed successfully!"
-      - name: Install Antigravity
-        shell: powershell
-        run: |
-          Write-Host "Downloading Antigravity..."
-
-          $url = "https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.20.6-5891862175809536/windows-x64/Antigravity.exe"
-          $output = "$env:USERPROFILE\Desktop\Antigravity.exe"
-
-          Invoke-WebRequest -Uri $url -OutFile $output
-
-          Write-Host "Download completed."
-
-          # محاولة تشغيله (إذا كان installer صامت)
-          Start-Process -FilePath $output -ArgumentList "/S" -Wait -ErrorAction SilentlyContinue
-
-          Write-Host "Antigravity installed or launched."
 
       - name: Install and Connect Tailscale
         shell: powershell
